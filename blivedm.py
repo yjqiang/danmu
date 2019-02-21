@@ -10,8 +10,10 @@ class BaseDanmu():
 
     def __init__(self, room_id, area_id, client_session=None):
         if client_session is None:
+            self._is_sharing_session = False
             self.client = aiohttp.ClientSession()
         else:
+            self._is_sharing_session = True
             self.client = client_session
         self.ws = None
         self._area_id = area_id
@@ -46,7 +48,7 @@ class BaseDanmu():
         except asyncio.CancelledError:
             return False
         except:
-            print(sys.exc_info()[0], sys.exc_info()[1])
+            print(sys.exc_info()[0])
             return False
         return True
 
@@ -60,8 +62,7 @@ class BaseDanmu():
             print('# 由于心跳包30s一次，但是发现35内没有收到任何包，说明已经悄悄失联了，主动断开')
             return None
         except:
-            print(sys.exc_info()[0], sys.exc_info()[1])
-            print('请联系开发者')
+            print(sys.exc_info()[0])
             return None
         
         return bytes_data
@@ -70,9 +71,11 @@ class BaseDanmu():
         try:
             url = 'wss://broadcastlv.chat.bilibili.com:443/sub'
             self.ws = await asyncio.wait_for(self.client.ws_connect(url), timeout=3)
+        except asyncio.TimeoutError:
+            print('连接超时')
         except:
-            print("# 连接无法建立，请检查本地网络状况")
-            print(sys.exc_info()[0], sys.exc_info()[1])
+            print("连接无法建立，请检查本地网络状况")
+            print(sys.exc_info()[0])
             return False
         print(f'{self._area_id}号弹幕监控已连接b站服务器')
         return (await self._send_bytes(self._bytes_conn_room))
@@ -84,7 +87,7 @@ class BaseDanmu():
                     return
                 await asyncio.sleep(30)
         except asyncio.CancelledError:
-            pass
+            return
             
     async def read_datas(self):
         while True:
@@ -174,6 +177,8 @@ class BaseDanmu():
                     await self.close_ws()
             if self._waiting is not None:
                 await self._waiting
+            if not self._is_sharing_session:
+                await self.client.close()
             return True
         else:
             return False
