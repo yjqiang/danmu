@@ -84,7 +84,7 @@ class BaseDanmu():
     async def _close_ws(self):
         await self._ws.close()
         
-    async def heart_beat(self):
+    async def _heart_beat(self):
         try:
             while True:
                 if not (await self._send_bytes(self._bytes_heartbeat)):
@@ -93,7 +93,7 @@ class BaseDanmu():
         except asyncio.CancelledError:
             return
             
-    async def read_datas(self):
+    async def _read_datas(self):
         while True:
             datas = await self._read_bytes()
             # 本函数对bytes进行相关操作，不特别声明，均为bytes
@@ -132,7 +132,6 @@ class BaseDanmu():
         
     async def run_forever(self):
         self._waiting = asyncio.Future()
-        await asyncio.sleep(6)
         while not self._closed:
             print(f'正在启动{self._area_id}号弹幕姬')
             
@@ -141,8 +140,8 @@ class BaseDanmu():
                     break
                 if not await self._connect_ws():
                     continue
-                self._task_main = asyncio.ensure_future(self.read_datas())
-                task_heartbeat = asyncio.ensure_future(self.heart_beat())
+                self._task_main = asyncio.ensure_future(self._read_datas())
+                task_heartbeat = asyncio.ensure_future(self._heart_beat())
             tasks = [self._task_main, task_heartbeat]
             _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             print(f'{self._area_id}号弹幕姬异常或主动断开，正在处理剩余信息')
