@@ -103,7 +103,7 @@ class BaseDanmu():
             len_datas = len(datas)
             while data_l != len_datas:
                 # 每片data都分为header和body，data和data可能粘连
-                # data_l == header_l && next_data_l = next_header_l
+                # data_l == header_l && next_data_l == next_header_l
                 # ||header_l...header_r|body_l...body_r||next_data_l...
                 tuple_header = self.structer.unpack_from(datas[data_l:])
                 len_data, len_header, _, opt, _ = tuple_header
@@ -112,7 +112,7 @@ class BaseDanmu():
                 body = datas[body_l:next_data_l]
                 # 人气值(或者在线人数或者类似)以及心跳
                 if opt == 3:
-                    UserCount, = struct.unpack('!I', body)
+                    # num_watching, = struct.unpack('!I', body)
                     print(f'弹幕心跳检测{self._area_id}')
                     pass
                 # cmd
