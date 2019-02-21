@@ -18,7 +18,7 @@ class BaseDanmu():
         self._ws = None
         
         self._area_id = area_id
-        self.room_id = room_id
+        self._room_id = room_id
         # 建立连接过程中难以处理重设置房间问题
         self._conn_lock = asyncio.Lock()
         self._task_main = None
@@ -29,12 +29,6 @@ class BaseDanmu():
     @property
     def room_id(self):
         return self._room_id
-        
-    @room_id.setter
-    def room_id(self, room_id):
-        self._room_id = room_id
-        str_conn_room = f'{{"uid":0,"roomid":{room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
-        self._bytes_conn_room = self._wrap_str(opt=7, str_body=str_conn_room)
         
     def _wrap_str(self, opt, str_body, len_header=16, ver=1, seq=1):
         bytes_body = str_body.encode('utf-8')
@@ -70,7 +64,8 @@ class BaseDanmu():
     async def _connect_ws(self):
         try:
             url = 'wss://broadcastlv.chat.bilibili.com:443/sub'
-            self._ws = await asyncio.wait_for(self._session.ws_connect(url), timeout=0.2)
+            self._ws = await asyncio.wait_for(
+                self._session.ws_connect(url), timeout=0.2)
         except asyncio.TimeoutError:
             print('连接超时')
             return False
@@ -79,7 +74,11 @@ class BaseDanmu():
             print(sys.exc_info()[0])
             return False
         print(f'{self._area_id}号弹幕监控已连接b站服务器')
-        return (await self._send_bytes(self._bytes_conn_room))
+        
+        str_enter = f'{{"uid":0,"roomid":{self._room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
+        print(str_enter)
+        bytes_enter = self._wrap_str(opt=7, str_body=str_enter)
+        return await self._send_bytes(bytes_enter)
         
     # 看了一下api，这玩意儿应该除了cancel其余都是暴力处理的，不会raise
     async def _close_ws(self):
@@ -88,7 +87,7 @@ class BaseDanmu():
     async def _heart_beat(self):
         try:
             while True:
-                if not (await self._send_bytes(self._bytes_heartbeat)):
+                if not await self._send_bytes(self._bytes_heartbeat):
                     return
                 await asyncio.sleep(30)
         except asyncio.CancelledError:
@@ -107,7 +106,7 @@ class BaseDanmu():
                 # data_l == header_l && next_data_l = next_header_l
                 # ||header_l...header_r|body_l...body_r||next_data_l...
                 tuple_header = self.structer.unpack_from(datas[data_l:])
-                len_data, len_header, ver, opt, seq = tuple_header
+                len_data, len_header, _, opt, _ = tuple_header
                 body_l = data_l + len_header
                 next_data_l = data_l + len_data
                 body = datas[body_l:next_data_l]
@@ -144,7 +143,8 @@ class BaseDanmu():
                 self._task_main = asyncio.ensure_future(self._read_datas())
                 task_heartbeat = asyncio.ensure_future(self._heart_beat())
             tasks = [self._task_main, task_heartbeat]
-            _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            _, pending = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_COMPLETED)
             print(f'{self._area_id}号弹幕姬异常或主动断开，正在处理剩余信息')
             if not task_heartbeat.done():
                 task_heartbeat.cancel()
@@ -161,7 +161,7 @@ class BaseDanmu():
             if self._task_main is not None:
                 await self._task_main
             # 由于锁的存在，绝对不可能到达下一个的自动重连状态，这里是保证正确显示当前监控房间号
-            self.room_id = room_id
+            self._room_id = room_id
             print(f'{self._area_id}号弹幕姬已经切换房间（{room_id}）')
             
     async def close(self):
