@@ -8,22 +8,23 @@ import aiohttp
 class BaseDanmu():
     structer = struct.Struct('!I2H2I')
 
-    def __init__(self, room_id, area_id, client_session=None):
-        if client_session is None:
+    def __init__(self, room_id, area_id, session=None):
+        if session is None:
             self._is_sharing_session = False
-            self.client = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession()
         else:
             self._is_sharing_session = True
-            self.client = client_session
-        self.ws = None
+            self._session = session
+        self._ws = None
+        
         self._area_id = area_id
         self.room_id = room_id
         # 建立连接过程中难以处理重设置房间问题
-        self.lock_for_reseting_roomid_manually = asyncio.Lock()
-        self.task_main = None
+        self._conn_lock = asyncio.Lock()
+        self._task_main = None
         self._waiting = None
         self._closed = False
-        self._bytes_heartbeat = self._wrap_str(opt=2, body='')
+        self._bytes_heartbeat = self._wrap_str(opt=2, str_body='')
     
     @property
     def room_id(self):
@@ -33,18 +34,17 @@ class BaseDanmu():
     def room_id(self, room_id):
         self._room_id = room_id
         str_conn_room = f'{{"uid":0,"roomid":{room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
-        self._bytes_conn_room = self._wrap_str(opt=7, body=str_conn_room)
+        self._bytes_conn_room = self._wrap_str(opt=7, str_body=str_conn_room)
         
-    def _wrap_str(self, opt, body, len_header=16, ver=1, seq=1):
-        remain_data = body.encode('utf-8')
-        len_data = len(remain_data) + len_header
+    def _wrap_str(self, opt, str_body, len_header=16, ver=1, seq=1):
+        bytes_body = str_body.encode('utf-8')
+        len_data = len(bytes_body) + len_header
         header = self.structer.pack(len_data, len_header, ver, opt, seq)
-        data = header + remain_data
-        return data
+        return header + bytes_body
 
     async def _send_bytes(self, bytes_data):
         try:
-            await self.ws.send_bytes(bytes_data)
+            await self._ws.send_bytes(bytes_data)
         except asyncio.CancelledError:
             return False
         except:
@@ -56,7 +56,7 @@ class BaseDanmu():
         bytes_data = None
         try:
             # 如果调用aiohttp的bytes read，none的时候，会raise exception
-            msg = await asyncio.wait_for(self.ws.receive(), timeout=35.0)
+            msg = await asyncio.wait_for(self._ws.receive(), timeout=35.0)
             bytes_data = msg.data
         except asyncio.TimeoutError:
             print('# 由于心跳包30s一次，但是发现35内没有收到任何包，说明已经悄悄失联了，主动断开')
@@ -67,10 +67,10 @@ class BaseDanmu():
         
         return bytes_data
         
-    async def connect_ws(self):
+    async def _connect_ws(self):
         try:
             url = 'wss://broadcastlv.chat.bilibili.com:443/sub'
-            self.ws = await asyncio.wait_for(self.client.ws_connect(url), timeout=3)
+            self._ws = await asyncio.wait_for(self._session.ws_connect(url), timeout=0.2)
         except asyncio.TimeoutError:
             print('连接超时')
         except:
@@ -79,6 +79,10 @@ class BaseDanmu():
             return False
         print(f'{self._area_id}号弹幕监控已连接b站服务器')
         return (await self._send_bytes(self._bytes_conn_room))
+        
+    # 看了一下api，这玩意儿应该除了cancel其余都是暴力处理的，不会raise
+    async def _close_ws(self):
+        await self._ws.close()
         
     async def heart_beat(self):
         try:
@@ -122,49 +126,40 @@ class BaseDanmu():
                     print(datas[data_l:next_data_l])
 
                 data_l = next_data_l
-
-    # 待确认
-    async def close_ws(self):
-        try:
-            await self.ws.close()
-        except:
-            print('请联系开发者', sys.exc_info()[0], sys.exc_info()[1])
-        if not self.ws.closed:
-            print(f'请联系开发者  {self._area_id}号弹幕收尾模块状态{self.ws.closed}')
                 
     def handle_danmu(self, body):
         return True
         
     async def run_forever(self):
         self._waiting = asyncio.Future()
+        await asyncio.sleep(6)
         while not self._closed:
             print(f'正在启动{self._area_id}号弹幕姬')
             
-            async with self.lock_for_reseting_roomid_manually:
+            async with self._conn_lock:
                 if self._closed:
                     break
-                is_open = await self.connect_ws()
-            if not is_open:
-                continue
-            self.task_main = asyncio.ensure_future(self.read_datas())
-            task_heartbeat = asyncio.ensure_future(self.heart_beat())
-            tasks = [self.task_main, task_heartbeat]
+                if not await self._connect_ws():
+                    continue
+                self._task_main = asyncio.ensure_future(self.read_datas())
+                task_heartbeat = asyncio.ensure_future(self.heart_beat())
+            tasks = [self._task_main, task_heartbeat]
             _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             print(f'{self._area_id}号弹幕姬异常或主动断开，正在处理剩余信息')
             if not task_heartbeat.done():
                 task_heartbeat.cancel()
-            await self.close_ws()
+            await self._close_ws()
             await asyncio.wait(pending)
             print(f'{self._area_id}号弹幕姬退出，剩余任务处理完毕')
         self._waiting.set_result(True)
             
     async def reconnect(self, room_id):
-        async with self.lock_for_reseting_roomid_manually:
+        async with self._conn_lock:
             # not None是判断是否已经连接了的(重连过程中也可以处理)
-            if self.ws is not None:
-                await self.close_ws()
-            if self.task_main is not None:
-                await self.task_main
+            if self._ws is not None:
+                await self._close_ws()
+            if self._task_main is not None:
+                await self._task_main
             # 由于锁的存在，绝对不可能到达下一个的自动重连状态，这里是保证正确显示当前监控房间号
             self.room_id = room_id
             print(f'{self._area_id}号弹幕姬已经切换房间（{room_id}）')
@@ -172,13 +167,13 @@ class BaseDanmu():
     async def close(self):
         if not self._closed:
             self._closed = True
-            async with self.lock_for_reseting_roomid_manually:
-                if self.ws is not None:
-                    await self.close_ws()
+            async with self._conn_lock:
+                if self._ws is not None:
+                    await self._close_ws()
             if self._waiting is not None:
                 await self._waiting
             if not self._is_sharing_session:
-                await self.client.close()
+                await self._session.close()
             return True
         else:
             return False
