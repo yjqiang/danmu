@@ -73,6 +73,7 @@ class BaseDanmu():
             self._ws = await asyncio.wait_for(self._session.ws_connect(url), timeout=0.2)
         except asyncio.TimeoutError:
             print('连接超时')
+            return False
         except:
             print("连接无法建立，请检查本地网络状况")
             print(sys.exc_info()[0])
