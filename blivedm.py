@@ -50,7 +50,7 @@ class BaseDanmu():
         bytes_data = None
         try:
             # 如果调用aiohttp的bytes read，none的时候，会raise exception
-            msg = await asyncio.wait_for(self._ws.receive(), timeout=35.0)
+            msg = await asyncio.wait_for(self._ws.receive(), timeout=35)
             bytes_data = msg.data
         except asyncio.TimeoutError:
             print('# 由于心跳包30s一次，但是发现35内没有收到任何包，说明已经悄悄失联了，主动断开')
@@ -65,7 +65,7 @@ class BaseDanmu():
         try:
             url = 'wss://broadcastlv.chat.bilibili.com:443/sub'
             self._ws = await asyncio.wait_for(
-                self._session.ws_connect(url), timeout=0.2)
+                self._session.ws_connect(url), timeout=3)
         except asyncio.TimeoutError:
             print('连接超时')
             return False
@@ -76,7 +76,6 @@ class BaseDanmu():
         print(f'{self._area_id}号弹幕监控已连接b站服务器')
         
         str_enter = f'{{"uid":0,"roomid":{self._room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
-        print(str_enter)
         bytes_enter = self._wrap_str(opt=7, str_body=str_enter)
         return await self._send_bytes(bytes_enter)
         
@@ -153,7 +152,7 @@ class BaseDanmu():
             print(f'{self._area_id}号弹幕姬退出，剩余任务处理完毕')
         self._waiting.set_result(True)
             
-    async def reconnect(self, room_id):
+    async def reset_roomid(self, room_id):
         async with self._conn_lock:
             # not None是判断是否已经连接了的(重连过程中也可以处理)
             if self._ws is not None:
