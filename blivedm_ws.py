@@ -183,6 +183,7 @@ class DanmuPrinter(BaseDanmuWs):
         dic = json.loads(body.decode('utf-8'))
         cmd = dic['cmd']
         if cmd == 'DANMU_MSG':
-            print(dic)
+            info = dic['info']
+            print(f'({info[2][0]}){info[2][1]}:{info[1]}')
         return True
 
