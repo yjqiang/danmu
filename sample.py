@@ -11,6 +11,7 @@ async def test2():
     connection = DanmuPrinter(23058, 0)
     await connection.run_forever()
 
+
 def main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
