@@ -47,7 +47,6 @@ class BaseDanmuWs():
         return True
 
     async def _read_bytes(self):
-        bytes_data = None
         try:
             # 如果调用aiohttp的bytes read，none的时候，会raise exception
             # timeout目的是b站30s间隔的心跳包会有确认返回，如果没了，当然就是gg
@@ -62,7 +61,7 @@ class BaseDanmuWs():
         
         return bytes_data
         
-    async def _connect_ws(self):
+    async def _open_conn(self):
         try:
             url = 'wss://broadcastlv.chat.bilibili.com:443/sub'
             self._ws = await asyncio.wait_for(
@@ -81,7 +80,7 @@ class BaseDanmuWs():
         return await self._send_bytes(bytes_enter)
         
     # 看了一下api，这玩意儿应该除了cancel其余都是暴力处理的，不会raise
-    async def _close_ws(self):
+    async def _close_conn(self):
         await self._ws.close()
         
     async def _heart_beat(self):
@@ -138,7 +137,7 @@ class BaseDanmuWs():
             async with self._conn_lock:
                 if self._closed:
                     break
-                if not await self._connect_ws():
+                if not await self._open_conn():
                     continue
                 self._task_main = asyncio.ensure_future(self._read_datas())
                 task_heartbeat = asyncio.ensure_future(self._heart_beat())
@@ -148,7 +147,7 @@ class BaseDanmuWs():
             print(f'{self._area_id}号弹幕姬异常或主动断开，正在处理剩余信息')
             if not task_heartbeat.done():
                 task_heartbeat.cancel()
-            await self._close_ws()
+            await self._close_conn()
             await asyncio.wait(pending)
             print(f'{self._area_id}号弹幕姬退出，剩余任务处理完毕')
         self._waiting.set_result(True)
@@ -157,7 +156,7 @@ class BaseDanmuWs():
         async with self._conn_lock:
             # not None是判断是否已经连接了的(重连过程中也可以处理)
             if self._ws is not None:
-                await self._close_ws()
+                await self._close_conn()
             if self._task_main is not None:
                 await self._task_main
             # 由于锁的存在，绝对不可能到达下一个的自动重连状态，这里是保证正确显示当前监控房间号
@@ -169,7 +168,7 @@ class BaseDanmuWs():
             self._closed = True
             async with self._conn_lock:
                 if self._ws is not None:
-                    await self._close_ws()
+                    await self._close_conn()
             if self._waiting is not None:
                 await self._waiting
             if not self._is_sharing_session:

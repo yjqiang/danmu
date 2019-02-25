@@ -15,7 +15,7 @@ class BaseDanmuTcp():
         
         self._area_id = area_id
         self._room_id = room_id
-        # 建立连接过程中难以处理重设置房间问题
+        # 建立连接过程中难以处理重设置房间或断线等问题
         self._conn_lock = asyncio.Lock()
         self._task_main = None
         self._waiting = None
@@ -43,7 +43,6 @@ class BaseDanmuTcp():
         return True
 
     async def _read_bytes(self, n):
-        bytes_data = None
         try:
             bytes_data = await asyncio.wait_for(
                 self._reader.readexactly(n), timeout=35)
@@ -56,7 +55,7 @@ class BaseDanmuTcp():
                 
         return bytes_data
         
-    async def _connect_tcp(self):
+    async def _open_conn(self):
         try:
             url = 'livecmt-2.bilibili.com'
             port = 2243
@@ -79,8 +78,7 @@ class BaseDanmuTcp():
         
         return await self._send_bytes(bytes_enter)
         
-    async def _close_tcp(self):
-        self._writer.close()
+    async def _close_conn(self):
         self._writer.close()
         # py3.7 才有（妈的你们真的磨叽）
         # await self._writer.wait_closed()
@@ -140,7 +138,7 @@ class BaseDanmuTcp():
             async with self._conn_lock:
                 if self._closed:
                     break
-                if not await self._connect_tcp():
+                if not await self._open_conn():
                     continue
                 self._task_main = asyncio.ensure_future(self._read_datas())
                 task_heartbeat = asyncio.ensure_future(self._heart_beat())
@@ -150,7 +148,7 @@ class BaseDanmuTcp():
             print(f'{self._area_id}号弹幕姬异常或主动断开，正在处理剩余信息')
             if not task_heartbeat.done():
                 task_heartbeat.cancel()
-            await self._close_tcp()
+            await self._close_conn()
             await asyncio.wait(pending)
             print(f'{self._area_id}号弹幕姬退出，剩余任务处理完毕')
         self._waiting.set_result(True)
@@ -159,7 +157,7 @@ class BaseDanmuTcp():
         async with self._conn_lock:
             # not None是判断是否已经连接了的(重连过程中也可以处理)
             if self._writer is not None:
-                await self._close_tcp()
+                await self._close_conn()
             if self._task_main is not None:
                 await self._task_main
             # 由于锁的存在，绝对不可能到达下一个的自动重连状态，这里是保证正确显示当前监控房间号
@@ -171,7 +169,7 @@ class BaseDanmuTcp():
             self._closed = True
             async with self._conn_lock:
                 if self._writer is not None:
-                    await self._close_tcp()
+                    await self._close_conn()
             if self._waiting is not None:
                 await self._waiting
             return True
