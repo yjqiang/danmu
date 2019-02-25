@@ -1,6 +1,5 @@
 import asyncio
 import struct
-import json
 import sys
 import aiohttp
 
@@ -176,14 +175,4 @@ class BaseDanmuWs():
             return True
         else:
             return False
-        
-        
-class DanmuPrinter(BaseDanmuWs):
-    def handle_danmu(self, body):
-        dic = json.loads(body.decode('utf-8'))
-        cmd = dic['cmd']
-        if cmd == 'DANMU_MSG':
-            info = dic['info']
-            print(f'({info[2][0]}){info[2][1]}:{info[1]}')
-        return True
 

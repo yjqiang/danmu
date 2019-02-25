@@ -1,6 +1,5 @@
 import asyncio
 import struct
-import json
 import sys
 import random
 
@@ -72,7 +71,6 @@ class BaseDanmuTcp():
         
         uid = random.randrange(100000000000000, 200000000000000)
         str_enter = f'{{"roomid":{self._room_id},"uid":{uid}}}'
-        print(str_enter)
     
         bytes_enter = self._wrap_str(opt=7, str_body=str_enter)
         
@@ -175,13 +173,4 @@ class BaseDanmuTcp():
             return True
         else:
             return False
-        
-        
-class DanmuPrinter(BaseDanmuTcp):
-    def handle_danmu(self, body):
-        dic = json.loads(body.decode('utf-8'))
-        cmd = dic['cmd']
-        info = dic['info']
-        if cmd == 'DANMU_MSG':
-            print(f'({info[2][0]}){info[2][1]}:{info[1]}')
-        return True
+
