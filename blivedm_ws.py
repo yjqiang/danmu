@@ -19,7 +19,7 @@ class BaseDanmuWs():
         
         self._area_id = area_id
         self._room_id = room_id
-        # 建立连接过程中难以处理重设置房间问题
+        # 建立连接过程中难以处理重设置房间或断线等问题
         self._conn_lock = asyncio.Lock()
         self._task_main = None
         self._waiting = None
@@ -50,6 +50,7 @@ class BaseDanmuWs():
         bytes_data = None
         try:
             # 如果调用aiohttp的bytes read，none的时候，会raise exception
+            # timeout目的是b站30s间隔的心跳包会有确认返回，如果没了，当然就是gg
             msg = await asyncio.wait_for(self._ws.receive(), timeout=35)
             bytes_data = msg.data
         except asyncio.TimeoutError:
