@@ -19,13 +19,13 @@ class BaseDanmuTcp():
         self._task_main = None
         self._waiting = None
         self._closed = False
-        self._bytes_heartbeat = self._wrap_str(opt=2, str_body='')
+        self._bytes_heartbeat = self._encapsulate(opt=2, str_body='')
     
     @property
     def room_id(self):
         return self._room_id
         
-    def _wrap_str(self, opt, str_body, len_header=16, ver=1, seq=1):
+    def _encapsulate(self, opt, str_body, len_header=16, ver=1, seq=1):
         bytes_body = str_body.encode('utf-8')
         len_data = len(bytes_body) + len_header
         header = self.structer.pack(len_data, len_header, ver, opt, seq)
@@ -72,7 +72,7 @@ class BaseDanmuTcp():
         uid = random.randrange(100000000000000, 200000000000000)
         str_enter = f'{{"roomid":{self._room_id},"uid":{uid}}}'
     
-        bytes_enter = self._wrap_str(opt=7, str_body=str_enter)
+        bytes_enter = self._encapsulate(opt=7, str_body=str_enter)
         
         return await self._send_bytes(bytes_enter)
         

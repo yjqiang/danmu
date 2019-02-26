@@ -23,13 +23,14 @@ class BaseDanmuWs():
         self._task_main = None
         self._waiting = None
         self._closed = False
-        self._bytes_heartbeat = self._wrap_str(opt=2, str_body='')
+        self._bytes_heartbeat = self._encapsulate(opt=2, str_body='')
     
     @property
     def room_id(self):
         return self._room_id
         
-    def _wrap_str(self, opt, str_body, len_header=16, ver=1, seq=1):
+    # 命名取自网络协议中的数据封装
+    def _encapsulate(self, opt, str_body, len_header=16, ver=1, seq=1):
         bytes_body = str_body.encode('utf-8')
         len_data = len(bytes_body) + len_header
         header = self.structer.pack(len_data, len_header, ver, opt, seq)
@@ -75,7 +76,7 @@ class BaseDanmuWs():
         print(f'{self._area_id}号弹幕监控已连接b站服务器')
         
         str_enter = f'{{"uid":0,"roomid":{self._room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
-        bytes_enter = self._wrap_str(opt=7, str_body=str_enter)
+        bytes_enter = self._encapsulate(opt=7, str_body=str_enter)
         return await self._send_bytes(bytes_enter)
         
     # 看了一下api，这玩意儿应该除了cancel其余都是暴力处理的，不会raise
