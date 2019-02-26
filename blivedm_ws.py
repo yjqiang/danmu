@@ -4,7 +4,7 @@ import sys
 import aiohttp
 
 
-class BaseDanmuWs():
+class BaseDanmu():
     structer = struct.Struct('!I2H2I')
 
     def __init__(self, room_id, area_id, session=None):

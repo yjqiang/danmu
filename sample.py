@@ -2,11 +2,11 @@
 
 import json
 import asyncio
-from blivedm_ws import BaseDanmuWs
-from blivedm_tcp import BaseDanmuTcp
+import blivedm_ws
+import blivedm_tcp
 
 
-class DanmuPrinter0(BaseDanmuWs):
+class DanmuPrinter0(blivedm_ws.BaseDanmu):
     def handle_danmu(self, body):
         dic = json.loads(body.decode('utf-8'))
         cmd = dic['cmd']
@@ -16,7 +16,7 @@ class DanmuPrinter0(BaseDanmuWs):
         return True
 
                 
-class DanmuPrinter1(BaseDanmuTcp):
+class DanmuPrinter1(blivedm_tcp.BaseDanmu):
     def handle_danmu(self, body):
         dic = json.loads(body.decode('utf-8'))
         cmd = dic['cmd']
