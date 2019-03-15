@@ -7,7 +7,7 @@ import aiohttp
 class BaseDanmu():
     structer = struct.Struct('!I2H2I')
 
-    def __init__(self, room_id, area_id, session=None):
+    def __init__(self, room_id, area_id, session=None, loop=None):
         if session is None:
             self._is_sharing_session = False
             self._session = aiohttp.ClientSession()
@@ -15,6 +15,11 @@ class BaseDanmu():
             self._is_sharing_session = True
             self._session = session
         self._ws = None
+        
+        if loop is not None:
+            self._loop = loop
+        else:
+            self._loop = asyncio.get_event_loop()
         
         self._area_id = area_id
         self._room_id = room_id
@@ -130,7 +135,7 @@ class BaseDanmu():
         return True
         
     async def run_forever(self):
-        self._waiting = asyncio.Future()
+        self._waiting = self._loop.create_future()
         while not self._closed:
             print(f'正在启动{self._area_id}号弹幕姬')
             

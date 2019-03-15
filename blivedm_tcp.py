@@ -7,10 +7,14 @@ import random
 class BaseDanmu():
     structer = struct.Struct('!I2H2I')
 
-    def __init__(self, room_id, area_id, session=None):
+    def __init__(self, room_id, area_id, session=None, loop=None):
         self._session = None
         self._reader = None
         self._writer = None
+        if loop is not None:
+            self._loop = loop
+        else:
+            self._loop = asyncio.get_event_loop()
         
         self._area_id = area_id
         self._room_id = room_id
@@ -129,7 +133,7 @@ class BaseDanmu():
         return True
         
     async def run_forever(self):
-        self._waiting = asyncio.Future()
+        self._waiting = self._loop.create_future()
         while not self._closed:
             print(f'正在启动{self._area_id}号弹幕姬')
             
