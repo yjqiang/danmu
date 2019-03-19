@@ -1,6 +1,7 @@
 import asyncio
 import struct
 import sys
+import json
 import aiohttp
 
 
@@ -36,10 +37,10 @@ class BaseDanmu():
         
     # 命名取自网络协议中的数据封装
     def _encapsulate(self, opt, str_body, len_header=16, ver=1, seq=1):
-        bytes_body = str_body.encode('utf-8')
-        len_data = len(bytes_body) + len_header
+        body = str_body.encode('utf-8')
+        len_data = len(body) + len_header
         header = self.structer.pack(len_data, len_header, ver, opt, seq)
-        return header + bytes_body
+        return header + body
 
     async def _send_bytes(self, bytes_data):
         try:
@@ -121,7 +122,7 @@ class BaseDanmu():
                     pass
                 # cmd
                 elif opt == 5:
-                    if not self.handle_danmu(body):
+                    if not self.handle_danmu(json.loads(body.decode('utf-8'))):
                         return
                 # 握手确认
                 elif opt == 8:
