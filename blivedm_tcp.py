@@ -39,6 +39,7 @@ class BaseDanmu:
     async def _send_bytes(self, bytes_data):
         try:
             self._writer.write(bytes_data)
+            await self._wrier.drain()
         except asyncio.CancelledError:
             return False
         except:
