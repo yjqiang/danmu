@@ -13,7 +13,7 @@ class TcpDanmuClient(Client):
             self, room_id: int, area_id: int, loop=None):
         heartbeat = 30.0
         conn = TcpConn(
-            url='tcp://livecmt-2.bilibili.com:2243',
+            url='tcp://broadcastlv.chat.bilibili.com:2243',
             receive_timeout=heartbeat + 10)
         super().__init__(
             area_id=area_id,
