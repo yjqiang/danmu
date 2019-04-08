@@ -9,7 +9,7 @@ from conn import WsConn
 
 
 class WsDanmuClient(Client):
-    header_struct = Struct('!I2H2I')
+    header_struct = Struct('>I2H2I')
 
     def __init__(
             self, room_id: int, area_id: int,

@@ -84,6 +84,18 @@ class TcpConn(Conn):
             return None
                 
         return bytes_data
+        
+    async def read_json(
+            self,
+            n: Optional[int] = None) -> Optional[dict]:
+        data = await self.read_bytes(n)
+        if not data:
+            return None
+        try:
+            dict_data = json.loads(data.decode('utf8'))
+        except Exception:
+            return None
+        return dict_data
                 
 
 class WsConn(Conn):

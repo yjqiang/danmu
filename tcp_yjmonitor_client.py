@@ -6,7 +6,7 @@ from conn import TcpConn
 
 
 class TcpYjMonitorClient(Client):
-    header_struct = Struct('!I')
+    header_struct = Struct('>I')
 
     def __init__(
             self, key: str, url: str, area_id: int, loop=None):
@@ -48,18 +48,18 @@ class TcpYjMonitorClient(Client):
             if header is None:
                 return
 
-            # 每片data都分为header和body，data和data可能粘连
-            # data_l == header_l && next_data_l == next_header_l
-            # ||header_l...header_r|body_l...body_r||next_data_l...
             len_body, = self.header_struct.unpack_from(header)
             
-            body = await self._conn.read_bytes(len_body)
+            # 心跳回复
+            if not len_body:
+                print('heartbeat')
+                continue
+            
+            body = await self._conn.read_json(len_body)
             if body is None:
                 return
-            # 心跳回复
-            if not body:
-                continue
-            json_data = json.loads(body.decode('utf-8'))
+            
+            json_data = body
 
             data_type = json_data['type']
             if data_type == 'raffle':

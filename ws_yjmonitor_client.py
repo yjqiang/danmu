@@ -1,5 +1,4 @@
 import json
-from struct import Struct
 from typing import Optional
 
 from aiohttp import ClientSession
@@ -9,8 +8,6 @@ from conn import WsConn
 
 
 class WsYjMonitorClient(Client):
-    header_struct = Struct('!I')
-
     def __init__(
             self, key: str, url: str, area_id: int,
             session: Optional[ClientSession] = None, loop=None):
