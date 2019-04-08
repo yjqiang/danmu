@@ -1,15 +1,16 @@
 import asyncio
 from tcp_yjmonitor_client import TcpYjMonitorClient
-# from ws_monitor_client import WsYjMonitorClient
+from ws_yjmonitor_client import WsYjMonitorClient
 
 
-key='MO[W+f[dMX90m`5,'
+key ='MO[W+f[dMX90m`5,'
 url = 'tcp://192.168.0.107:8002'
+url = 'ws://192.168.0.107:8001/ws'
 area_id = 0
 
 
-async def test_yjmonitor_client(Client):
-    connection = Client(
+async def test_yjmonitor_client(client):
+    connection = client(
         key=key,
         url=url,
         area_id=area_id)
@@ -26,10 +27,10 @@ async def test_tcp_yjmonitor_client():
     
     
 async def test_ws_yjmonitor_client():
-    await test_yjmonitor_client(TcpYjMonitorClient)
+    await test_yjmonitor_client(WsYjMonitorClient)
 
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-loop.run_until_complete(test_tcp_yjmonitor_client())
+loop.run_until_complete(test_ws_yjmonitor_client())
 loop.close()

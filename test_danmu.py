@@ -7,8 +7,8 @@ room_id = 23058
 area_id = 0
 
 
-async def test_danmu_client(Client):
-    connection = Client(room_id, area_id)
+async def test_danmu_client(client):
+    connection = client(room_id, area_id)
     asyncio.ensure_future(connection.run_forever())
     await asyncio.sleep(20)
     await connection.reset_roomid(7734200)
