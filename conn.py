@@ -1,6 +1,6 @@
 import json
 import asyncio
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession, WSMsgType
@@ -26,6 +26,9 @@ class Conn:
         return True
         
     async def read_bytes(self) -> Optional[bytes]:
+        return None
+        
+    async def read_json(self) -> Any:
         return None
         
         
@@ -87,7 +90,7 @@ class TcpConn(Conn):
         
     async def read_json(
             self,
-            n: Optional[int] = None) -> Optional[dict]:
+            n: Optional[int] = None) -> Any:
         data = await self.read_bytes(n)
         if not data:
             return None
@@ -163,7 +166,7 @@ class WsConn(Conn):
         
         return bytes_data
 
-    async def read_json(self) -> Optional[dict]:
+    async def read_json(self) -> Any:
         try:
             msg = await asyncio.wait_for(
                 self._ws.receive(), timeout=self._receive_timeout)
