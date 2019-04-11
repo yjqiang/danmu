@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from aiohttp import ClientSession, WSMsgType
 
 
-# TODO check tcp close
 class Conn:
     # receive_timeout 推荐为heartbeat间隔加10/5
     def __init__(self, receive_timeout: Optional[float] = None):
