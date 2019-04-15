@@ -35,7 +35,14 @@ class WsDanmuClient(Client):
         
     @property
     def _hello(self):
-        str_enter = f'{{"uid":0,"roomid":{self._room_id},"protover":1,"platform":"web","clientver":"1.3.3"}}'
+        dict_enter = {
+            'uid': 0,
+            'roomid': self._room_id,
+            'protover': 1,
+            'platform': 'web',
+            'clientver': '1.3.3'
+            }
+        str_enter = json.dumps(dict_enter)
         bytes_enter = self._encapsulate(opt=7, str_body=str_enter)
         return bytes_enter
         
