@@ -41,23 +41,23 @@ class WsYjMonitorClient(Client):
         body = str_body.encode('utf-8')
         return body
 
-    async def _read_datas(self):
-        while True:
-            body = await self._conn.read_json()
-            if body is None:
-                return
-            json_data = body
+    async def _read_one(self) -> bool:
+        body = await self._conn.read_json()
+        if body is None:
+            return True
+        json_data = body
 
-            data_type = json_data['type']
-            if data_type == 'raffle':
-                if not self.handle_danmu(json_data['data']):
-                    return
-            # 握手确认
-            elif data_type == 'entered':
-                print(f'确认监控已经连接')
-            elif data_type == 'error':
-                print(f'发生致命错误{json_data}')
-                return
+        data_type = json_data['type']
+        if data_type == 'raffle':
+            if not self.handle_danmu(json_data['data']):
+                return True
+        # 握手确认
+        elif data_type == 'entered':
+            print(f'确认监控已经连接')
+        elif data_type == 'error':
+            print(f'发生致命错误{json_data}')
+            return False
+        return True
 
     @staticmethod
     def handle_danmu(body):

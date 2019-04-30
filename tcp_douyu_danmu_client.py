@@ -74,29 +74,29 @@ class TcpDanmuClient(Client):
         header = self.header_struct.pack(len_data, len_data, type_data, 0)
         return header + body + end
 
-    async def _read_datas(self):
-        while True:
-            header = await self._conn.read_bytes(12)
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if header is None:
-                return
+    async def _read_one(self) -> bool:
+        header = await self._conn.read_bytes(12)
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if header is None:
+            return False
 
-            # 每片data都分为header和body，data和data可能粘连
-            # data_l == header_l && next_data_l == next_header_l
-            # ||header_l...header_r|body_l...body_r||next_data_l...
-            tuple_header = self.header_struct.unpack_from(header)
-            len_data, _, _, _ = tuple_header
-            n = len_data - 12 + 4
-            body = await self._conn.read_bytes(n)
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if body is None:
-                return
-            print(body)
-            body = body[:-1]
-            dict_body = self._stt_loads(body.decode('utf8'))
-            print(body)
-            print(dict_body)
-            print()
+        # 每片data都分为header和body，data和data可能粘连
+        # data_l == header_l && next_data_l == next_header_l
+        # ||header_l...header_r|body_l...body_r||next_data_l...
+        tuple_header = self.header_struct.unpack_from(header)
+        len_data, _, _, _ = tuple_header
+        n = len_data - 12 + 4
+        body = await self._conn.read_bytes(n)
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if body is None:
+            return False
+        print(body)
+        body = body[:-1]
+        dict_body = self._stt_loads(body.decode('utf8'))
+        print(body)
+        print(dict_body)
+        print()
+        return True
 
     @staticmethod
     def handle_danmu(body):

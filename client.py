@@ -1,11 +1,12 @@
 import asyncio
+from typing import Optional
 
 from conn import Conn
 
 
 class Client:
     def __init__(
-            self, area_id: int, conn: Conn, heartbeat: float = 30.0, loop=None):
+            self, area_id: int, conn: Conn, heartbeat: float = 30.0, loop: asyncio.AbstractEventLoop = None):
         if loop is not None:
             self._loop = loop
         else:
@@ -17,7 +18,8 @@ class Client:
         # 建立连接过程中难以处理重设置房间或断线等问题
         self._conn_lock = asyncio.Lock()
         self._task_main = None
-        self._waiting = None
+        self._waiting_end: Optional[asyncio.Future] = None
+        self._waiting_pause: Optional[asyncio.Future] = None
         self._closed = False
         
         self._bytes_heartbeat = b''
@@ -30,15 +32,18 @@ class Client:
     @property
     def _hello(self):
         return b''
-        
+
+    # 建立连接并且发生初始化信息
     async def _open(self):
         if await self._conn.open():
             return await self._conn.send_bytes(self._hello)
         return False
-        
+
+    # 关闭当前连接，client不管
     async def _close(self):
         await self._conn.close()
         
+    # 心跳
     async def _send_heartbeat(self):
         try:
             while True:
@@ -47,15 +52,24 @@ class Client:
                 await asyncio.sleep(self._heartbeat)
         except asyncio.CancelledError:
             return
-            
+
+    # 循环读取
     async def _read_datas(self):
-        while True:
-            pass
+        while self._waiting_pause is None:
+            if not await self._read_one():
+                return
+
+    # 读一次数据（完整数据包括头尾）
+    async def _read_one(self) -> bool:
+        return True
                         
     async def run_forever(self):
-        self._waiting = self._loop.create_future()
+        self._waiting_end = self._loop.create_future()
         while not self._closed:
             print(f'正在启动{self._area_id}号数据链接')
+            if self._waiting_pause is not None:
+                print(f'暂停启动{self._area_id}号数据链接，等待RESUME指令')
+                await self._waiting_pause
             
             async with self._conn_lock:
                 if self._closed:
@@ -78,15 +92,24 @@ class Client:
             if pending:
                 await asyncio.wait(pending)
             print(f'{self._area_id}号数据连接退出，剩余任务处理完毕')
-        self._waiting.set_result(True)
+        self._waiting_end.set_result(True)
+        
+    def pause(self):
+        if self._waiting_pause is None:
+            self._waiting_pause = self._loop.create_future()
+            
+    def resume(self):
+        if self._waiting_pause is not None:
+            self._waiting_pause.set_result(True)
+            self._waiting_pause = None
             
     async def close(self):
         if not self._closed:
             self._closed = True
             async with self._conn_lock:
                 await self._close()
-            if self._waiting is not None:
-                await self._waiting
+            if self._waiting_end is not None:
+                await self._waiting_end
             await self._conn.clean()
             return True
         else:

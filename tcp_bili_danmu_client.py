@@ -42,40 +42,40 @@ class TcpDanmuClient(Client):
         header = self.header_struct.pack(len_data, len_header, ver, opt, seq)
         return header + body
 
-    async def _read_datas(self):
-        while True:
-            header = await self._conn.read_bytes(16)
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if header is None:
-                return
+    async def _read_one(self) -> bool:
+        header = await self._conn.read_bytes(16)
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if header is None:
+            return False
 
-            # 每片data都分为header和body，data和data可能粘连
-            # data_l == header_l && next_data_l == next_header_l
-            # ||header_l...header_r|body_l...body_r||next_data_l...
-            tuple_header = self.header_struct.unpack_from(header)
-            len_data, len_header, _, opt, _ = tuple_header
+        # 每片data都分为header和body，data和data可能粘连
+        # data_l == header_l && next_data_l == next_header_l
+        # ||header_l...header_r|body_l...body_r||next_data_l...
+        tuple_header = self.header_struct.unpack_from(header)
+        len_data, len_header, _, opt, _ = tuple_header
 
-            len_body = len_data - len_header
-            body = await self._conn.read_bytes(len_body)
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if body is None:
-                return
+        len_body = len_data - len_header
+        body = await self._conn.read_bytes(len_body)
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if body is None:
+            return False
 
-            # 人气值(或者在线人数或者类似)以及心跳
-            if opt == 3:
-                # num_watching, = struct.unpack('!I', body)
-                print(f'弹幕心跳检测{self._area_id}')
-                pass
-            # cmd
-            elif opt == 5:
-                if not self.handle_danmu(json.loads(body.decode('utf-8'))):
-                    return
-            # 握手确认
-            elif opt == 8:
-                print(f'{self._area_id}号弹幕监控进入房间（{self._room_id}）')
-            else:
-                print(body)
-                return
+        # 人气值(或者在线人数或者类似)以及心跳
+        if opt == 3:
+            # num_watching, = struct.unpack('!I', body)
+            print(f'弹幕心跳检测{self._area_id}')
+            pass
+        # cmd
+        elif opt == 5:
+            if not self.handle_danmu(json.loads(body.decode('utf-8'))):
+                return False
+        # 握手确认
+        elif opt == 8:
+            print(f'{self._area_id}号弹幕监控进入房间（{self._room_id}）')
+        else:
+            print(body)
+            return False
+        return True
 
     @staticmethod
     def handle_danmu(body):

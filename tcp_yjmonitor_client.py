@@ -41,36 +41,36 @@ class TcpYjMonitorClient(Client):
         header = self.header_struct.pack(len_body)
         return header + body
 
-    async def _read_datas(self):
-        while True:
-            header = await self._conn.read_bytes(4)
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if header is None:
-                return
+    async def _read_one(self) -> bool:
+        header = await self._conn.read_bytes(4)
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if header is None:
+            return False
 
-            len_body, = self.header_struct.unpack_from(header)
-            
-            # 心跳回复
-            if not len_body:
-                print('heartbeat')
-                continue
-            
-            body = await self._conn.read_json(len_body)
-            if body is None:
-                return
-            
-            json_data = body
+        len_body, = self.header_struct.unpack_from(header)
 
-            data_type = json_data['type']
-            if data_type == 'raffle':
-                if not self.handle_danmu(json_data['data']):
-                    return
-            # 握手确认
-            elif data_type == 'entered':
-                print(f'确认监控已经连接')
-            elif data_type == 'error':
-                print(f'发生致命错误{json_data}')
-                return
+        # 心跳回复
+        if not len_body:
+            print('heartbeat')
+            return True
+
+        body = await self._conn.read_json(len_body)
+        if body is None:
+            return False
+
+        json_data = body
+
+        data_type = json_data['type']
+        if data_type == 'raffle':
+            if not self.handle_danmu(json_data['data']):
+                return False
+        # 握手确认
+        elif data_type == 'entered':
+            print(f'确认监控已经连接')
+        elif data_type == 'error':
+            print(f'发生致命错误{json_data}')
+            return False
+        return True
 
     @staticmethod
     def handle_danmu(body):

@@ -78,30 +78,30 @@ class WsDanmuClient(Client):
         header = self.header_struct.pack(len_data, len_data, type_data, 0)
         return header + body + end
 
-    async def _read_datas(self):
-        while True:
-            datas = await self._conn.read_bytes()
-            # 本函数对bytes进行相关操作，不特别声明，均为bytes
-            if datas is None:
-                return
-            data_l = 0
-            len_datas = len(datas)
-            while data_l != len_datas:
-                # 每片data都分为header和body，data和data可能粘连
-                # data_l == header_l && next_data_l == next_header_l
-                # ||header_l...header_r|body_l...body_r||next_data_l...
-                tuple_header = self.header_struct.unpack_from(datas[data_l:])
-                len_data, _, _, _ = tuple_header
-                body_l = data_l + 12
-                next_data_l = data_l + len_data + 4
-                body = datas[body_l:next_data_l-1]  # 因为最后一个字节是无效0
-                # 人气值(或者在线人数或者类似)以及心跳
-                dict_body = self._stt_loads(body.decode('utf8'))
-                print(body)
-                print(dict_body)
-                print()
+    async def _read_one(self) -> bool:
+        datas = await self._conn.read_bytes()
+        # 本函数对bytes进行相关操作，不特别声明，均为bytes
+        if datas is None:
+            return False
+        data_l = 0
+        len_datas = len(datas)
+        while data_l != len_datas:
+            # 每片data都分为header和body，data和data可能粘连
+            # data_l == header_l && next_data_l == next_header_l
+            # ||header_l...header_r|body_l...body_r||next_data_l...
+            tuple_header = self.header_struct.unpack_from(datas[data_l:])
+            len_data, _, _, _ = tuple_header
+            body_l = data_l + 12
+            next_data_l = data_l + len_data + 4
+            body = datas[body_l:next_data_l-1]  # 因为最后一个字节是无效0
+            # 人气值(或者在线人数或者类似)以及心跳
+            dict_body = self._stt_loads(body.decode('utf8'))
+            print(body)
+            print(dict_body)
+            print()
 
-                data_l = next_data_l
+            data_l = next_data_l
+        return True
 
     @staticmethod
     def handle_danmu(body):

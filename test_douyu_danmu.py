@@ -13,11 +13,14 @@ async def test_danmu_client(client):
     await asyncio.sleep(20)
     await connection.reset_roomid(952595)
     print('RESTED')
+    connection.pause()
+    await asyncio.sleep(200)
+    print('resume')
+    connection.resume()
     await asyncio.sleep(20)
+    print('close')
     await connection.close()
     print('END')
-    
-    await asyncio.sleep(1000)
 
 
 async def test_tcp_danmu_client():

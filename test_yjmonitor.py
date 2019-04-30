@@ -3,9 +3,9 @@ from tcp_yjmonitor_client import TcpYjMonitorClient
 from ws_yjmonitor_client import WsYjMonitorClient
 
 
-key ='MO[W+f[dMX90m`5,'
+key = 'iQ3j&,KW:dQ^<=Y6'
 url = 'tcp://192.168.0.107:8002'
-url = 'ws://192.168.0.107:8001/ws'
+# url = 'ws://192.168.0.107:8001/ws'
 area_id = 0
 
 
@@ -15,7 +15,13 @@ async def test_yjmonitor_client(client):
         url=url,
         area_id=area_id)
     asyncio.ensure_future(connection.run_forever())
-    await asyncio.sleep(2000)
+    await asyncio.sleep(20)
+    print('pause')
+    connection.pause()
+    await asyncio.sleep(200)
+    print('resume')
+    connection.resume()
+    await asyncio.sleep(20)
     await connection.close()
     print('END')
     
@@ -32,5 +38,5 @@ async def test_ws_yjmonitor_client():
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-loop.run_until_complete(test_ws_yjmonitor_client())
+loop.run_until_complete(test_tcp_yjmonitor_client())
 loop.close()
