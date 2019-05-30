@@ -1,6 +1,6 @@
 import asyncio
-from tcp_douyu_danmu_client import TcpDanmuClient
-from ws_douyu_danmu_client import WsDanmuClient
+from douyu.tcp_douyu_danmu_client import TcpDanmuClient
+from douyu.ws_douyu_danmu_client import WsDanmuClient
 
 
 room_id = 952595
