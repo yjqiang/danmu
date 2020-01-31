@@ -23,6 +23,9 @@ class TcpV2DanmuClient(Client):
             loop=loop)
         self._room_id = room_id
 
+        self.recv = 0
+        self.orig = 0
+
         self._bytes_heartbeat = self._encapsulate(opt=2, str_body='')
         self._funcs_task.append(self._send_heartbeat)
 
@@ -77,12 +80,12 @@ class TcpV2DanmuClient(Client):
         if body is None:
             return False
 
-        print(tuple_header)
-
-        print(f'seq == {seq}  ver == {ver}')
-        if seq == 0 and ver == 2:  # v2协议有混合，可能不成熟吧
+        self.recv += len_data
+        print(f'seq == {seq}  ver == {ver} opt == {opt}')
+        if ver == 2 and opt == 5:  # v2协议有混合，可能不成熟吧(混合了0 2)
             datas = zlib.decompress(body)
-            print((len(body) + 16) / (len(datas) + 16))
+            self.orig += len(datas) + 16
+            print('压缩效率', self.recv / self.orig)
             data_l = 0
             len_datas = len(datas)
             while data_l != len_datas:
@@ -90,17 +93,16 @@ class TcpV2DanmuClient(Client):
                 # data_l == header_l && next_data_l == next_header_l
                 # ||header_l...header_r|body_l...body_r||next_data_l...
                 tuple_header = self.header_struct.unpack_from(datas[data_l:])
-                len_data, len_header, ver, opt, _ = tuple_header
-                assert ver == 0 or ver == 2
+                len_data, len_header, _, opt, _ = tuple_header
                 body_l = data_l + len_header
                 next_data_l = data_l + len_data
                 body = datas[body_l:next_data_l]
-                # 人气值(或者在线人数或者类似)以及心跳
                 if not self.parse_body(body, opt):
                     return False
                 data_l = next_data_l
             return True
         else:
+            self.orig += len_data
             return self.parse_body(body, opt)
 
     @staticmethod
