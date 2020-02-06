@@ -1,12 +1,12 @@
 import json
-from struct import Struct
 
 from client import Client
 from conn import TcpConn
+from .utils import Header, Pack
 
 
 class TcpYjMonitorClient(Client):
-    header_struct = Struct('>I')
+    __slots__ = ('_key', '_pack_heartbeat')
 
     def __init__(
             self, key: str, url: str, area_id: int, loop=None):
@@ -21,37 +21,30 @@ class TcpYjMonitorClient(Client):
             loop=loop)
         self._key = key
 
-        self._bytes_heartbeat = self._encapsulate(str_body='')
-        self._funcs_task.append(self._send_heartbeat)
+        self._pack_heartbeat = Pack.pack(str_body='')
 
-    @property
-    def _hello(self):
+    async def _one_hello(self) -> bool:
         dict_enter = {
             'code': 0,
             'type': 'ask',
             'data': {'key': self._key}
             }
         str_enter = json.dumps(dict_enter)
-        bytes_enter = self._encapsulate(str_body=str_enter)
-        return bytes_enter
+        return await self._conn.send_bytes(Pack.pack(str_body=str_enter))
 
-    def _encapsulate(self, str_body):
-        body = str_body.encode('utf-8')
-        len_body = len(body)
-        header = self.header_struct.pack(len_body)
-        return header + body
+    async def _one_heartbeat(self) -> bool:
+        return await self._conn.send_bytes(self._pack_heartbeat)
 
-    async def _read_one(self) -> bool:
+    async def _one_read(self) -> bool:
         header = await self._conn.read_bytes(4)
-        # 本函数对bytes进行相关操作，不特别声明，均为bytes
         if header is None:
             return False
 
-        len_body, = self.header_struct.unpack_from(header)
+        len_body, = Header.unpack(header)
 
         # 心跳回复
         if not len_body:
-            print('heartbeat')
+            # print('heartbeat')
             return True
 
         body = await self._conn.read_json(len_body)
@@ -72,7 +65,6 @@ class TcpYjMonitorClient(Client):
             return False
         return True
 
-    @staticmethod
-    def handle_danmu(body):
-        print(body)
+    def handle_danmu(self, body):
+        print(f'{self._area_id} 号数据连接:', body)
         return True

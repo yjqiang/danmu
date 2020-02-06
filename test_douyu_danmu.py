@@ -1,16 +1,15 @@
 import asyncio
-from douyu.tcp_douyu_danmu_client import TcpDanmuClient
 from douyu.ws_douyu_danmu_client import WsDanmuClient
 
-
-room_id = 952595
+ # https://www.douyu.com/123455
+room_id = 5526219
 area_id = 0
 
 
 async def test_danmu_client(client):
     connection = client(room_id, area_id)
     asyncio.ensure_future(connection.run_forever())
-    await asyncio.sleep(20)
+    await asyncio.sleep(2000)
     await connection.reset_roomid(952595)
     print('RESTED')
     connection.pause()
@@ -24,7 +23,7 @@ async def test_danmu_client(client):
 
 
 async def test_tcp_danmu_client():
-    await test_danmu_client(TcpDanmuClient)
+    await test_danmu_client(0)
     
     
 async def test_ws_danmu_client():
@@ -33,5 +32,5 @@ async def test_ws_danmu_client():
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-loop.run_until_complete(test_tcp_danmu_client())
+loop.run_until_complete(test_ws_danmu_client())
 loop.close()

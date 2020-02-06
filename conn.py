@@ -2,41 +2,55 @@ import json
 import asyncio
 from typing import Optional, Any
 from urllib.parse import urlparse
+from abc import ABC, abstractmethod
 
-from aiohttp import ClientSession, WSMsgType
+from aiohttp import ClientSession, WSMsgType, ClientError
 
 
-class Conn:
-    # receive_timeout 推荐为heartbeat间隔加10/5
+class Conn(ABC):
+    __slots__ = ('_receive_timeout',)
+
+    # receive_timeout 推荐为 heartbeat 间隔加 10s 或 5s
+    @abstractmethod
     def __init__(self, receive_timeout: Optional[float] = None):
         self._receive_timeout = receive_timeout
-        
+
+    @abstractmethod
     async def open(self) -> bool:
         return False
-    
+
+    @abstractmethod
     async def close(self) -> bool:
         return True
         
-    # 用于永久close之后一些数据清理等
-    async def clean(self):
+    # 用于永久 close 之后一些数据清理等
+    @abstractmethod
+    async def clean(self) -> None:
         pass
-        
-    async def send_bytes(self, bytes_data) -> bool:
+
+    @abstractmethod
+    async def send_bytes(self, bytes_data: bytes) -> bool:
         return True
-        
+
+    @abstractmethod
     async def read_bytes(self) -> Optional[bytes]:
         return None
-        
+
+    @abstractmethod
     async def read_json(self) -> Any:
         return None
         
         
 class TcpConn(Conn):
+    __slots__ = ('_host', '_port', '_reader', '_writer')
+
     # url 格式 tcp://hostname:port
     def __init__(self, url: str, receive_timeout: Optional[float] = None):
         super().__init__(receive_timeout)
         result = urlparse(url)
-        assert result.scheme == 'tcp'
+        if result.scheme != 'tcp':
+            raise TypeError(f'url scheme must be tcp ({result.scheme})')
+
         self._host = result.hostname
         self._port = result.port
         self._reader = None
@@ -46,9 +60,7 @@ class TcpConn(Conn):
         try:
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self._host, self._port), timeout=3)
-        except asyncio.TimeoutError:
-            return False
-        except Exception:
+        except (OSError, asyncio.TimeoutError):
             return False
         return True
         
@@ -59,16 +71,17 @@ class TcpConn(Conn):
             # await self._writer.wait_closed()
         return True
     
-    async def clean(self):
+    async def clean(self) -> None:
         pass
         
-    async def send_bytes(self, bytes_data) -> bool:
+    async def send_bytes(self, bytes_data: bytes) -> bool:
         try:
             self._writer.write(bytes_data)
             await self._writer.drain()
-        except asyncio.CancelledError:
+        except OSError:
             return False
-        except Exception:
+        except asyncio.CancelledError:
+            # print('asyncio.CancelledError', 'send_bytes')
             return False
         return True
         
@@ -80,11 +93,11 @@ class TcpConn(Conn):
         try:
             bytes_data = await asyncio.wait_for(
                 self._reader.readexactly(n), timeout=self._receive_timeout)
-        except asyncio.TimeoutError:
+        except (OSError, asyncio.TimeoutError):
             return None
-        except Exception:
+        except asyncio.CancelledError:
+            # print('asyncio.CancelledError', 'read_bytes')
             return None
-                
         return bytes_data
         
     async def read_json(
@@ -93,24 +106,23 @@ class TcpConn(Conn):
         data = await self.read_bytes(n)
         if not data:
             return None
-        try:
-            dict_data = json.loads(data.decode('utf8'))
-        except Exception:
-            return None
-        return dict_data
+        return json.loads(data.decode('utf8'))
                 
 
 class WsConn(Conn):
+    __slots__ = ('_url', '_is_sharing_session', '_session', '_ws_receive_timeout', '_ws_heartbeat', '_ws')
+
     # url 格式 ws://hostname:port/… 或者 wss://hostname:port/…
     def __init__(
             self, url: str,
             receive_timeout: Optional[float] = None,
             session: Optional[ClientSession] = None,
-            ws_receive_timeout: Optional[float] = None,  # 自动pingpong时候用的
-            ws_heartbeat: Optional[float] = None):  # 自动pingpong时候用的
+            ws_receive_timeout: Optional[float] = None,  # 自动 ping pong 时候用的
+            ws_heartbeat: Optional[float] = None):  # 自动 ping pong 时候用的
         super().__init__(receive_timeout)
         result = urlparse(url)
-        assert result.scheme == 'ws' or result.scheme == 'wss'
+        if result.scheme != 'ws' and result.scheme != 'wss':
+            raise TypeError(f'url scheme must be websocket ({result.scheme})')
         self._url = url
         
         if session is None:
@@ -130,9 +142,7 @@ class WsConn(Conn):
                     self._url,
                     receive_timeout=self._ws_receive_timeout,
                     heartbeat=self._ws_heartbeat), timeout=3)
-        except asyncio.TimeoutError:
-            return False
-        except Exception:
+        except (ClientError, asyncio.TimeoutError):
             return False
         return True
         
@@ -141,29 +151,31 @@ class WsConn(Conn):
             await self._ws.close()
         return True
         
-    async def clean(self):
+    async def clean(self) -> None:
         if not self._is_sharing_session:
             await self._session.close()
         
-    async def send_bytes(self, bytes_data) -> bool:
+    async def send_bytes(self, bytes_data: bytes) -> bool:
         try:
             await self._ws.send_bytes(bytes_data)
-        except asyncio.CancelledError:
+        except ClientError:
             return False
-        except Exception:
+        except asyncio.CancelledError:
             return False
         return True
                 
     async def read_bytes(self) -> Optional[bytes]:
         try:
-            bytes_data = await asyncio.wait_for(
-                self._ws.receive_bytes(), timeout=self._receive_timeout)
-        except asyncio.TimeoutError:
+            msg = await asyncio.wait_for(
+                self._ws.receive(), timeout=self._receive_timeout)
+            if msg.type == WSMsgType.BINARY:
+                return msg.data
+        except (ClientError, asyncio.TimeoutError):
             return None
-        except Exception:
+        except asyncio.CancelledError:
+            # print('asyncio.CancelledError', 'read_bytes')
             return None
-        
-        return bytes_data
+        return None
 
     async def read_json(self) -> Any:
         try:
@@ -173,9 +185,9 @@ class WsConn(Conn):
                 return json.loads(msg.data)
             elif msg.type == WSMsgType.BINARY:
                 return json.loads(msg.data.decode('utf8'))
-        except asyncio.TimeoutError:
+        except (ClientError, asyncio.TimeoutError):
             return None
-        except Exception:
+        except asyncio.CancelledError:
+            # print('asyncio.CancelledError', 'read_json')
             return None
-
         return None
