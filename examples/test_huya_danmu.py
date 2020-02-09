@@ -1,13 +1,13 @@
 import asyncio
-from douyu.ws_douyu_danmu_client import WsDanmuClient
 
- # https://www.douyu.com/123455
-room_id = 5526219
+from examples.huya.ws_huya_danmu_client import WsDanmuClient
+
+room = '990128'
 area_id = 0
 
 
 async def test_danmu_client(client):
-    connection = client(room_id, area_id)
+    connection = client(room, area_id)
     asyncio.ensure_future(connection.run_forever())
     await asyncio.sleep(2000)
     await connection.reset_roomid(952595)

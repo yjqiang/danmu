@@ -1,9 +1,9 @@
 import asyncio
 
-from bili.tcp_bili_danmu_client import TcpDanmuClient
-from bili.tcp_v2_bili_danmu_client import TcpV2DanmuClient
-from bili.ws_bili_danmu_client import WsDanmuClient
-from bili.ws_v2_bili_danmu_client import WsV2DanmuClient
+from examples.bili.tcp_bili_danmu_client import TcpDanmuClient
+from examples.bili.tcp_v2_bili_danmu_client import TcpV2DanmuClient
+from examples.bili.ws_bili_danmu_client import WsDanmuClient
+from examples.bili.ws_v2_bili_danmu_client import WsV2DanmuClient
 
 
 room_id = 21721813
@@ -36,5 +36,5 @@ async def test_ws_v2_danmu_client():
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-loop.run_until_complete(test_ws_v2_danmu_client())
+loop.run_until_complete(test_tcp_danmu_client())
 loop.close()

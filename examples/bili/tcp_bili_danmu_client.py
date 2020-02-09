@@ -1,24 +1,19 @@
 import json
-from typing import Optional
+import random
 
-from aiohttp import ClientSession
-
-from client import Client
-from conn import WsConn
-from .utils import Opt, Pack
+from danmu_abc import TcpConn, Client
+from .utils import Header, Opt, Pack
 
 
-class WsDanmuClient(Client):
+class TcpDanmuClient(Client):
     __slots__ = ('_room_id', '_pack_heartbeat')
 
     def __init__(
-            self, room_id: int, area_id: int,
-            session: Optional[ClientSession] = None, loop=None):
+            self, room_id: int, area_id: int, loop=None):
         heartbeat = 30.0
-        conn = WsConn(
-            url='wss://broadcastlv.chat.bilibili.com:443/sub',
-            receive_timeout=heartbeat+10,
-            session=session)
+        conn = TcpConn(
+            url='tcp://broadcastlv.chat.bilibili.com:2243',
+            receive_timeout=heartbeat + 10)
         super().__init__(
             area_id=area_id,
             conn=conn,
@@ -27,35 +22,35 @@ class WsDanmuClient(Client):
         self._room_id = room_id
 
         self._pack_heartbeat = Pack.pack('', opt=Opt.HEARTBEAT, ver=1, seq=1)
-        
+
     @property
     def room_id(self):
         return self._room_id
 
     async def _one_hello(self) -> bool:
-        dict_enter = {
-            'uid': 0,
-            'roomid': self._room_id,
-            'protover': 1,
-            'platform': 'web',
-            'clientver': '1.3.3'
-            }
-        str_enter = json.dumps(dict_enter)
+        uid = random.randrange(100000000000000, 200000000000000)
+        str_enter = f'{{"roomid":{self._room_id},"uid":{uid}}}'
         return await self._conn.send_bytes(Pack.pack(str_enter, opt=Opt.AUTH, ver=1, seq=1))
 
     async def _one_heartbeat(self) -> bool:
         return await self._conn.send_bytes(self._pack_heartbeat)
-        
-    async def _one_read(self) -> bool:
-        packs = await self._conn.read_bytes()
 
-        if packs is None:
+    async def _one_read(self) -> bool:
+        header = await self._conn.read_bytes(Header.raw_header_size)
+        if header is None:
             return False
 
-        for opt, body in Pack.unpack(packs):
-            if not self.parse_body(body, opt):
-                return False
-        return True
+        # 每片 pack 都分为 header 和 body ，pack 和 pack 可能粘连
+        # pack = header + body
+        # ||[pack0](header0_l...header0_r|body0_l...body0_r)||[pack1](...)||...
+        len_pack, len_header, _, opt, _ = Header.unpack(header)
+
+        len_body = len_pack - len_header
+        body = await self._conn.read_bytes(len_body)
+        if body is None:
+            return False
+
+        return self.parse_body(body, opt)
 
     def parse_body(self, body: bytes, opt: int) -> bool:
         # 人气值(或者在线人数或者类似)以及心跳

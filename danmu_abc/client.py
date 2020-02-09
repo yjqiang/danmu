@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 from abc import ABC, abstractmethod
 
-from conn import Conn
+from .conn import Conn
 
 
 class Client(ABC):

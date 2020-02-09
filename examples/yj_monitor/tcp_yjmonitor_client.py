@@ -1,7 +1,6 @@
 import json
 
-from client import Client
-from conn import TcpConn
+from danmu_abc import TcpConn, Client
 from .utils import Header, Pack
 
 

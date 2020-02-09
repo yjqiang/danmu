@@ -1,15 +1,13 @@
 import json
 from typing import Optional
-import zlib
 
 from aiohttp import ClientSession
 
-from client import Client
-from conn import WsConn
-from .utils import Header, Opt, Pack
+from danmu_abc import WsConn, Client
+from .utils import Opt, Pack
 
 
-class WsV2DanmuClient(Client):
+class WsDanmuClient(Client):
     __slots__ = ('_room_id', '_pack_heartbeat')
 
     def __init__(
@@ -26,8 +24,8 @@ class WsV2DanmuClient(Client):
             heartbeat=heartbeat,
             loop=loop)
         self._room_id = room_id
-        
-        self._pack_heartbeat = Pack.pack('', opt=Opt.HEARTBEAT, ver=2, seq=1)
+
+        self._pack_heartbeat = Pack.pack('', opt=Opt.HEARTBEAT, ver=1, seq=1)
         
     @property
     def room_id(self):
@@ -37,34 +35,26 @@ class WsV2DanmuClient(Client):
         dict_enter = {
             'uid': 0,
             'roomid': self._room_id,
-            'protover': 2,
+            'protover': 1,
             'platform': 'web',
-            'clientver': '1.7.3'
+            'clientver': '1.3.3'
             }
         str_enter = json.dumps(dict_enter)
-        return await self._conn.send_bytes(Pack.pack(str_enter, opt=Opt.AUTH, ver=2, seq=1))
+        return await self._conn.send_bytes(Pack.pack(str_enter, opt=Opt.AUTH, ver=1, seq=1))
 
     async def _one_heartbeat(self) -> bool:
         return await self._conn.send_bytes(self._pack_heartbeat)
         
     async def _one_read(self) -> bool:
         packs = await self._conn.read_bytes()
+
         if packs is None:
             return False
 
-        len_pack, len_header, ver, opt, _ = Header.unpack(packs)
-        body = packs[len_header:]
-
-        if ver == 2 and opt == Opt.SEND_MSG_REPLY:   # v2 协议有混合，可能不成熟吧
-            print('v2')
-            packs = zlib.decompress(body)
-            for opt, body in Pack.unpack(packs):
-                if not self.parse_body(body, opt):
-                    return False
-            return True
-        else:
-            assert len_pack == len(packs)
-            return self.parse_body(body, opt)
+        for opt, body in Pack.unpack(packs):
+            if not self.parse_body(body, opt):
+                return False
+        return True
 
     def parse_body(self, body: bytes, opt: int) -> bool:
         # 人气值(或者在线人数或者类似)以及心跳

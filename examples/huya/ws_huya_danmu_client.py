@@ -8,8 +8,7 @@ import re
 
 from aiohttp import ClientSession
 
-from client import Client
-from conn import WsConn
+from danmu_abc import WsConn, Client
 from .utils import WSUserInfo, WebSocketCommand, EWebSocketCommandType, WSPushMessage, MessageNotice
 from .tars.core import tarscore
 

@@ -2,8 +2,7 @@ import json
 import random
 import zlib
 
-from client import Client
-from conn import TcpConn
+from danmu_abc import TcpConn, Client
 from .utils import Header, Opt, Pack
 
 

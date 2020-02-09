@@ -1,5 +1,5 @@
 import asyncio
-from yj_monitor.tcp_yjmonitor_client import TcpYjMonitorClient
+from examples.yj_monitor.tcp_yjmonitor_client import TcpYjMonitorClient
 
 
 key = 'iQ3j&,KW:dQ^<=Y6'
