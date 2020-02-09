@@ -42,9 +42,9 @@ class Pack:
         pack_l = 0
         len_packs = len(packs)
         while pack_l != len_packs:
-            len_pack, len_header, _, opt, _ = Header.unpack(packs[pack_l:])
+            len_pack, _, _, opt, _ = Header.unpack(packs[pack_l:pack_l+Header.raw_header_size])
             next_pack_l = pack_l + len_pack
-            body = packs[pack_l + len_header:next_pack_l]
+            body = packs[pack_l + Header.raw_header_size:next_pack_l]
             yield opt, body
             pack_l = next_pack_l
 

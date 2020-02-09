@@ -40,7 +40,7 @@ class Pack:
         pack_l = 0
         len_packs = len(packs)
         while pack_l != len_packs:
-            len_pack, pack_type, _, _ = Header.unpack(packs[pack_l:])
+            len_pack, pack_type, _, _ = Header.unpack(packs[pack_l:pack_l+Header.raw_header_size])
             next_pack_l = pack_l + len_pack + 4
             body = packs[pack_l+Header.raw_header_size:next_pack_l - 1]  # 因为最后一个字节是无效0
             yield pack_type, body
