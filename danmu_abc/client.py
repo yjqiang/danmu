@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional
+from typing import Optional, Callable
 from abc import ABC, abstractmethod
 
 from .conn import Conn
@@ -8,12 +8,15 @@ from .conn import Conn
 class Client(ABC):
     __slots__ = (
         '_loop', '_area_id', '_conn', '_opening_lock', '_waiting_end', '_waiting_pause', '_closed',
-        '_heartbeat', '_task_main', '_funcs_task'
+        '_heartbeat', '_task_main', '_funcs_task', '_logger_info'
     )
 
     def __init__(
-            self, area_id: int, conn: Conn, heartbeat: float = 30.0, loop: asyncio.AbstractEventLoop = None):
+            self, area_id: int, conn: Conn, heartbeat: float = 30.0, loop: asyncio.AbstractEventLoop = None,
+            logger_info: Callable = print
+    ):
         self._loop = asyncio.get_event_loop() if loop is None else loop
+        self._logger_info = logger_info
          
         self._area_id = area_id
         self._conn = conn
@@ -78,14 +81,14 @@ class Client(ABC):
     async def run_forever(self) -> None:
         self._waiting_end = self._loop.create_future()
         while not self._closed:
-            print(f'正在启动 {self._area_id} 号数据连接')
+            self._logger_info(f'正在启动 {self._area_id} 号数据连接')
             if self._waiting_pause is not None:
-                print(f'暂停启动 {self._area_id} 号数据连接，等待 RESUME 指令')
+                self._logger_info(f'暂停启动 {self._area_id} 号数据连接，等待 RESUME 指令')
                 await self._waiting_pause
             
             async with self._opening_lock:
                 if self._closed:
-                    print(f'{self._area_id} 号数据连接确认收到关闭信号，正在处理')
+                    self._logger_info(f'{self._area_id} 号数据连接确认收到关闭信号，正在处理')
                     break
                 # 未成功建立数据连接，循环重试
                 if await self._prepare_client() and await self._job_open():
@@ -101,14 +104,14 @@ class Client(ABC):
                 
             _, pending = await asyncio.wait(
                 tasks, return_when=asyncio.FIRST_COMPLETED)
-            print(f'{self._area_id} 号数据连接异常或主动断开，正在处理剩余信息')
+            self._logger_info(f'{self._area_id} 号数据连接异常或主动断开，正在处理剩余信息')
             for i in pending:
                 if i != self._task_main:
                     i.cancel()
             await self._job_close()
             if pending:
                 await asyncio.wait(pending)
-            print(f'{self._area_id} 号数据连接退出，剩余任务处理完毕')
+            self._logger_info(f'{self._area_id} 号数据连接退出，剩余任务处理完毕')
         self._waiting_end.set_result(True)
 
     @property
