@@ -112,6 +112,7 @@ class Client(ABC):
             if pending:
                 await asyncio.wait(pending)
             self._logger_info(f'{self._area_id} 号数据连接退出，剩余任务处理完毕')
+        await self._conn.clean()
         self._waiting_end.set_result(True)
 
     @property
@@ -136,6 +137,5 @@ class Client(ABC):
 
             if self._waiting_end is not None:
                 await self._waiting_end
-            await self._conn.clean()
             return True
         return False
