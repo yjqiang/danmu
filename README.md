@@ -9,4 +9,4 @@
 
 
 ## 版权问题：
-1. 本代码 fork 自 [blivedm](https://github.com/xfgryujk/blivedm)，由于与作者一些观点不同，并未走向一致，后由于一些原因，在于原作者[协商](https://github.com/xfgryujk/blivedm)后切断 fork 关系。LICENSE 也进行相应变动。
+1. 本代码 fork 自 [blivedm](https://github.com/xfgryujk/blivedm)，由于与作者一些观点不同，并未走向一致，后由于一些原因，在与原作者[协商](https://github.com/xfgryujk/blivedm/issues/9)后切断 fork 关系。LICENSE 也进行相应变动。
