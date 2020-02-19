@@ -1,13 +1,29 @@
+import re
+import pathlib
+
 from setuptools import setup
 
-VERSION = '0.1.2'
+
+HERE = pathlib.Path(__file__).parent
+
+txt = (HERE / 'danmu_abc' / '__init__.py').read_text('utf-8')
+try:
+    version = re.findall(r"^__version__ = '([^']+)'\r?$", txt, re.M)[0]
+except IndexError:
+    raise RuntimeError('Unable to determine the version.')
+
+
+def read(f):
+    return (HERE / f).read_text('utf-8').strip()
 
 
 setup(
     name='danmu_abc',
     packages=['danmu_abc'],
-    version=VERSION,
+    version=version,
     description='Danmu for humans.',
+    long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     license='MIT',
     author='yjqang',
     author_email='yjqiang01@gmail.com',

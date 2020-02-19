@@ -88,8 +88,9 @@ class TcpConn(Conn):
     async def read_bytes(
             self,
             n: Optional[int] = None) -> Optional[bytes]:
+        # 不支持的原因是，tcp 会切数据，自己拼装过于复杂
         if n is None or n <= 0:
-            return b''
+            return None
         try:
             bytes_data = await asyncio.wait_for(
                 self._reader.readexactly(n), timeout=self._receive_timeout)
