@@ -8,4 +8,4 @@
 1. [pause](https://github.com/yjqiang/danmu/blob/9dc40b556709b895cbfc690e37d0b8e3fe57ffe2/client.py#L119) 用于暂停连接，暂停后，连接是[断开](https://github.com/yjqiang/danmu/blob/9dc40b556709b895cbfc690e37d0b8e3fe57ffe2/client.py#L84)的。直到 [resume](https://github.com/yjqiang/danmu/blob/9dc40b556709b895cbfc690e37d0b8e3fe57ffe2/client.py#L123) 唤醒。
 
 ## 版权问题：
-1. 本代码 fork 自 [blivedm](https://github.com/xfgryujk/blivedm)，由于与原作者一些观点不同，并未走向一致，后由于一些原因，在于原作者[协商](https://github.com/xfgryujk/blivedm)后切断 fork 关系。LICENSE 也进行相应变动。
+1. 本代码 fork 自 [blivedm](https://github.com/xfgryujk/blivedm)，由于与原作者一些观点不同，并未走向一致，后由于一些原因，在于原作者[协商](https://github.com/xfgryujk/blivedm/issues/9)后切断 fork 关系。LICENSE 也进行相应变动。
