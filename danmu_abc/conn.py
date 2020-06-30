@@ -94,7 +94,7 @@ class TcpConn(Conn):
         try:
             bytes_data = await asyncio.wait_for(
                 self._reader.readexactly(n), timeout=self._receive_timeout)
-        except (OSError, asyncio.TimeoutError, asyncio.streams.IncompleteReadError):
+        except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError):
             return None
         except asyncio.CancelledError:
             # print('asyncio.CancelledError', 'read_bytes')
