@@ -8,11 +8,12 @@ from aiohttp import ClientSession, WSMsgType, ClientError
 
 
 class Conn(ABC):
-    __slots__ = ('_receive_timeout',)
+    __slots__ = ('_url', '_receive_timeout',)
 
     # receive_timeout 推荐为 heartbeat 间隔加 10s 或 5s
     @abstractmethod
-    def __init__(self, receive_timeout: Optional[float] = None):
+    def __init__(self, url: str, receive_timeout: Optional[float] = None):
+        self._url = url
         self._receive_timeout = receive_timeout
 
     @abstractmethod
@@ -39,6 +40,18 @@ class Conn(ABC):
     @abstractmethod
     async def read_json(self) -> Any:
         return None
+
+    # 类似于 https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamReader.readexactly
+    # Read exactly n bytes.
+    @abstractmethod
+    async def read_exactly_bytes(self, n: int) -> Optional[bytes]:
+        return None
+
+    # 类似于 https://docs.python.org/3/library/asyncio-stream.html#asyncio.StreamReader.readexactly
+    # Read exactly n bytes.
+    @abstractmethod
+    async def read_exactly_json(self, n: int) -> Any:
+        return None
         
         
 class TcpConn(Conn):
@@ -46,7 +59,7 @@ class TcpConn(Conn):
 
     # url 格式 tcp://hostname:port
     def __init__(self, url: str, receive_timeout: Optional[float] = None):
-        super().__init__(receive_timeout)
+        super().__init__(url, receive_timeout)
         result = urlparse(url)
         if result.scheme != 'tcp':
             raise TypeError(f'url scheme must be tcp ({result.scheme})')
@@ -84,12 +97,17 @@ class TcpConn(Conn):
             # print('asyncio.CancelledError', 'send_bytes')
             return False
         return True
+
+    async def read_bytes(self) -> Optional[bytes]:
+        # 不支持的原因是，tcp 流式传输，自己拼装过于复杂
+        raise NotImplementedError("Sorry, but I don't think we need this in TCP.")
+
+    async def read_json(self) -> Any:
+        # 不支持的原因是，tcp 流式传输，自己拼装过于复杂
+        raise NotImplementedError("Sorry, but I don't think we need this in TCP.")
         
-    async def read_bytes(
-            self,
-            n: Optional[int] = None) -> Optional[bytes]:
-        # 不支持的原因是，tcp 会切数据，自己拼装过于复杂
-        if n is None or n <= 0:
+    async def read_exactly_bytes(self, n: int) -> Optional[bytes]:
+        if n <= 0:
             return None
         try:
             bytes_data = await asyncio.wait_for(
@@ -101,17 +119,15 @@ class TcpConn(Conn):
             return None
         return bytes_data
         
-    async def read_json(
-            self,
-            n: Optional[int] = None) -> Any:
-        data = await self.read_bytes(n)
+    async def read_exactly_json(self, n: int) -> Any:
+        data = await self.read_exactly_bytes(n)
         if not data:
             return None
         return json.loads(data.decode('utf8'))
                 
 
 class WsConn(Conn):
-    __slots__ = ('_url', '_is_sharing_session', '_session', '_ws_receive_timeout', '_ws_heartbeat', '_ws')
+    __slots__ = ('_is_sharing_session', '_session', '_ws_receive_timeout', '_ws_heartbeat', '_ws')
 
     # url 格式 ws://hostname:port/… 或者 wss://hostname:port/…
     def __init__(
@@ -120,7 +136,7 @@ class WsConn(Conn):
             session: Optional[ClientSession] = None,
             ws_receive_timeout: Optional[float] = None,  # 自动 ping pong 时候用的
             ws_heartbeat: Optional[float] = None):  # 自动 ping pong 时候用的
-        super().__init__(receive_timeout)
+        super().__init__(url, receive_timeout)
         result = urlparse(url)
         if result.scheme != 'ws' and result.scheme != 'wss':
             raise TypeError(f'url scheme must be websocket ({result.scheme})')
@@ -192,3 +208,9 @@ class WsConn(Conn):
             # print('asyncio.CancelledError', 'read_json')
             return None
         return None
+
+    async def read_exactly_bytes(self, n: int) -> Optional[bytes]:
+        raise NotImplementedError("Sorry, but I don't think we need this in WebSocket.")
+
+    async def read_exactly_json(self, n: int) -> Any:
+        raise NotImplementedError("Sorry, but I don't think we need this in WebSocket.")

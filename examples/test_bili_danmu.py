@@ -36,5 +36,5 @@ async def test_ws_v2_danmu_client():
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-loop.run_until_complete(test_tcp_danmu_client())
+loop.run_until_complete(test_tcp_v2_danmu_client())
 loop.close()

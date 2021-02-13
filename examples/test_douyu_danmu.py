@@ -1,7 +1,7 @@
 import asyncio
 from examples.douyu.ws_douyu_danmu_client import WsDanmuClient
 
- # https://www.douyu.com/123455
+# https://www.douyu.com/123455
 room_id = 5526219
 area_id = 0
 

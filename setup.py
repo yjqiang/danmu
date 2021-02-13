@@ -32,7 +32,7 @@ setup(
         'danmu', 'huya', 'bilibili', 'douyu'
     ],
     install_requires=[
-        'aiohttp>=3.6.2,<4.0.0',
+        'aiohttp>=3.7.3,<4.0.0',
     ],
     classifiers=[
         'Intended Audience :: Developers',

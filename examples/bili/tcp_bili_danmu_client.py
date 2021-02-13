@@ -36,7 +36,7 @@ class TcpDanmuClient(Client):
         return await self._conn.send_bytes(self._pack_heartbeat)
 
     async def _one_read(self) -> bool:
-        header = await self._conn.read_bytes(Header.raw_header_size)
+        header = await self._conn.read_exactly_bytes(Header.raw_header_size)
         if header is None:
             return False
 
@@ -46,7 +46,7 @@ class TcpDanmuClient(Client):
         len_pack, len_header, _, opt, _ = Header.unpack(header)
 
         len_body = len_pack - len_header
-        body = await self._conn.read_bytes(len_body)
+        body = await self._conn.read_exactly_bytes(len_body)
         if body is None:
             return False
 

@@ -35,7 +35,7 @@ class TcpYjMonitorClient(Client):
         return await self._conn.send_bytes(self._pack_heartbeat)
 
     async def _one_read(self) -> bool:
-        header = await self._conn.read_bytes(4)
+        header = await self._conn.read_exactly_bytes(4)
         if header is None:
             return False
 
@@ -46,7 +46,7 @@ class TcpYjMonitorClient(Client):
             # print('heartbeat')
             return True
 
-        body = await self._conn.read_json(len_body)
+        body = await self._conn.read_exactly_json(len_body)
         if body is None:
             return False
 
